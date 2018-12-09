@@ -64,7 +64,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     .retrieve();
             String prettyResponse;
             try {
-                prettyResponse = gson.toJson(responseSpec.bodyToMono(Object.class).block());
+                prettyResponse = gson.toJson(responseSpec.bodyToMono(GenericResponse.class).block());
             } catch (Exception ex) {
                 prettyResponse = gson.toJson(new ResponseList(responseSpec
                         .bodyToFlux(GenericResponse.class)
