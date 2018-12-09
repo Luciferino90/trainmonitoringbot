@@ -31,7 +31,7 @@ public class TrenitaliaAndamentoResponse implements TrenitaliaResponse, Serializ
     private String stazioneUltimoRilevamento;
     private String idDestinazione;
     private String idOrigine;
-    private List<String> cambiNumero;
+    private List<CambiNumero> cambiNumero;
     private Boolean hasProvvedimenti;
     private List<String> descOrientamento;
     private String compOraUltimoRilevamento;

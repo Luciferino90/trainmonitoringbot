@@ -68,7 +68,7 @@ public class NotificationScheduler {
         return enabled.get();
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 150000)
     void execute(){
         AtomicInteger stopCounter = new AtomicInteger(0);
         if (isWorking())
