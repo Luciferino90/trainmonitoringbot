@@ -1,0 +1,29 @@
+spring:
+  main:
+    banner-mode: log
+  datasource:
+    url:
+    username:
+    password:
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  webservices:
+    path: /trenitalia
+telegram:
+  bot:
+    token:
+    username:
+logging:
+  level:
+    org: INFO
+server:
+  port: 9999
+trenitalia:
+  service:
+    url: http://www.viaggiatreno.it/viaggiatrenonew/resteasy/viaggiatreno
+    autocomplete: /cercaNumeroTrenoTrenoAutocomplete/%s
+    unique: /andamentoTreno/%s/%s
+scheduler:
+  enabled: false
