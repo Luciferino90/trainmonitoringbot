@@ -4,7 +4,7 @@ import it.luciferino.trainmonitoringbot.domain.entities.Task;
 import it.luciferino.trainmonitoringbot.domain.repository.TaskRepository;
 import it.luciferino.trainmonitoringbot.dto.Request;
 import it.luciferino.trainmonitoringbot.dto.response.GenericDTO;
-import it.luciferino.trainmonitoringbot.dto.response.internal.ErrorResponse;
+import it.luciferino.trainmonitoringbot.dto.response.internal.Message;
 import it.luciferino.trainmonitoringbot.dto.response.internal.TaskResponse;
 import it.luciferino.trainmonitoringbot.dto.response.internal.TrainResponse;
 import it.luciferino.trainmonitoringbot.enumeration.TipoNotifica;
@@ -45,6 +45,7 @@ public class TaskService {
                                             .stationCode(trainResponse.getIdOrigine())
                                             .ritardo(trainResponse.getRitardoAttuale())
                                             .stopNumber(trainResponse.getNumeroFermata())
+                                            .ctime(ZonedDateTime.now())
                                             .build())
                             )
                             .map(task -> {
@@ -61,8 +62,8 @@ public class TaskService {
         return Mono.just(taskRepository.deleteAllByChatIdAndId(request.getChatId(), request.getTaskId()))
                 .map(o -> {
                     if (o <= 0)
-                        return new ErrorResponse(String.format("Nessun record trovato per chat %s e id %s", request.getChatId(), request.getTaskId()));
-                    return new ErrorResponse("Cancellazione avvenuta con successo");
+                        return new Message(String.format("Nessun record trovato per chat %s e id %s", request.getChatId(), request.getTaskId()));
+                    return new Message("Cancellazione avvenuta con successo");
                 });
     }
 

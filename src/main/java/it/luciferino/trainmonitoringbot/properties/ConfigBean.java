@@ -11,6 +11,9 @@ public class ConfigBean {
     @Value("${spring.webservices.path}")
     private String springWebservicesPath;
 
+    @Value("${spring.webservices.telegram}")
+    private String springWebservicesTelegram;
+
     @Value("${trenitalia.service.url}")
     private String trenitaliaServiceUrl;
 

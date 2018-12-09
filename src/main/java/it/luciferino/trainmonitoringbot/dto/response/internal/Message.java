@@ -10,7 +10,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-public class ErrorResponse extends GenericDTO implements Serializable {
+public class Message extends GenericDTO implements Serializable {
 
     private static final long serialVersionUID = 8987010282113963830L;
     private String message;

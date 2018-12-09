@@ -17,6 +17,7 @@ import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.server.support.RouterFunctionMapping;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -27,6 +28,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import javax.annotation.PostConstruct;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -44,10 +46,13 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private ConfigBean configBean;
 
+    @Autowired
+    private EndpointsListener endpointsListener;
+
     @PostConstruct
     public void init() {
         webClient = WebClient.create("http://localhost:" + configBean.getServerPort());
-        gson = new GsonBuilder().setPrettyPrinting().create();
+        gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
         mapper = new ObjectMapper()
                 .setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm a z"))
                 .configure(SerializationFeature.INDENT_OUTPUT, true)
@@ -57,7 +62,12 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         Message message = update.getMessage();
+        if (!message.getText().startsWith("/train"))
+            return;
+        dispatch(message);
+    }
 
+    private void dispatch(Message message){
         try {
             WebClient.ResponseSpec responseSpec = webClient.get()
                     .uri(prepareUri(message.getChatId(), message.getText()))
@@ -71,7 +81,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                         .toStream()
                         .map(GenericResponse::getData)
                         .collect(Collectors.toList())).getDetailList());
-        }
+            }
 
             sendMessage(prettyResponse, message.getMessageId(), message.getChatId());
         } catch (Exception e) {
@@ -80,7 +90,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    public void sendMessage(String message, Integer messageId, Long chatId) {
+    private void sendMessage(String message, Integer messageId, Long chatId) {
         try {
             execute(new SendMessage()
                     .setText(message)
@@ -112,7 +122,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private String prepareUri(Long chatId, String endPoint) {
-        return (configBean.getSpringWebservicesPath() + "/" + chatId.toString() + endPoint).replace(" ", "/");
+        return (configBean.getSpringWebservicesPath()
+                + "/" + chatId.toString()
+                + endPoint.replace(configBean.getSpringWebservicesTelegram(), "")).replace(" ", "/");
+    }
+
+    private void checkKeyboards(String request){
+        final String command = request.replace(" ", "/");
+        List<String> proxiedEndpoint = endpointsListener.getMappedRequest();
+        System.out.println(proxiedEndpoint);
     }
 
 }
@@ -122,6 +140,10 @@ public class TelegramBot extends TelegramLongPollingBot {
 class EndpointsListener implements ApplicationListener {
 
     private List<String> supportedEndPoint;
+    private List<String> mappedRequest;
+
+    @Autowired
+    private ConfigBean configBean;
 
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
@@ -132,8 +154,25 @@ class EndpointsListener implements ApplicationListener {
             supportedEndPoint = Arrays.stream(Objects.requireNonNull(applicationContext.getBean(RouterFunctionMapping.class)
                     .getRouterFunction())
                     .toString().split("\n"))
-                    .map(message -> message.split("&& ")[1].split("\\)")[0])
-                    .filter(endpoint -> !endpoint.contains("{"))
+                    .map(endPoint -> endPoint.split("&& ")[1].split("\\)")[0])
+                    .map(endPoint -> endPoint.replace("/{chatId}", ""))
+                    .filter(endPoint -> !endPoint.contains("/scheduler"))
+                    .collect(Collectors.toList());
+
+            mappedRequest = supportedEndPoint.stream()
+                    .map(endpoint -> endpoint.replace(configBean.getSpringWebservicesPath(), configBean.getSpringWebservicesTelegram()))
+                    .flatMap(endpoint -> {
+                        List<String> parts = Arrays.stream(endpoint.split("/"))
+                                .filter(part -> !StringUtils.isEmpty(part))
+                                .map(part -> part.startsWith("{") && part.endsWith("}") ? part : part )
+                                .collect(Collectors.toList());
+                        List<String> endpoints = new ArrayList<>();
+                        for (int c = 0; c < parts.size(); c++)
+                            endpoints.add("/" + String.join("/", parts.subList(0, c + 1)));
+                        return endpoints.stream();
+                    })
+                    .distinct()
+                    .sorted((a, b) -> Integer.compare(b.length(), a.length()))
                     .collect(Collectors.toList());
         }
     }

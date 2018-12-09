@@ -21,10 +21,12 @@ public class RequestRouter extends BasicRouter {
                         .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)), requestHandler::get)
                 .andRoute(RequestPredicates.GET(configBean.getSpringWebservicesPath() + "/{chatId}/list")
                         .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)), requestHandler::list)
+                .andRoute(RequestPredicates.GET(configBean.getSpringWebservicesPath() + "/scheduler/force")
+                        .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)), requestHandler::forceScheduler)
                 .andRoute(RequestPredicates.GET(configBean.getSpringWebservicesPath() + "/scheduler/working")
                         .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)), requestHandler::isSchedulerWorking)
                 .andRoute(RequestPredicates.GET(configBean.getSpringWebservicesPath() + "/scheduler/toggle")
-                        .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)), requestHandler::toggleScheduler   )
+                        .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)), requestHandler::toggleScheduler)
                 ;
     }
 

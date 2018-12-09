@@ -2,7 +2,7 @@ package it.luciferino.trainmonitoringbot.webflux.handler;
 
 import it.luciferino.trainmonitoringbot.domain.service.TaskService;
 import it.luciferino.trainmonitoringbot.dto.response.GenericResponse;
-import it.luciferino.trainmonitoringbot.dto.response.internal.ErrorResponse;
+import it.luciferino.trainmonitoringbot.dto.response.internal.Message;
 import it.luciferino.trainmonitoringbot.scheduler.NotificationScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -24,8 +24,8 @@ public class RequestHandler extends BasicHandler {
         return Mono.just(serverRequest)
                 .map(this::readRequest)
                 .flatMap(req -> taskService.getTask(req))
-                .defaultIfEmpty(new ErrorResponse("Errore interno")).log()
-                .onErrorResume(e -> Mono.just(new ErrorResponse(e.getMessage())))
+                .defaultIfEmpty(new Message("Errore interno")).log()
+                .onErrorResume(e -> Mono.just(new Message(e.getMessage())))
                 .map(GenericResponse::new)
                 .flatMap(response -> ServerResponse.ok().body(BodyInserters.fromObject(response)));
     }
@@ -34,8 +34,8 @@ public class RequestHandler extends BasicHandler {
         return Mono.just(serverRequest)
                 .map(this::readRequest)
                 .flatMap(req -> taskService.deleteTask(req))
-                .defaultIfEmpty(new ErrorResponse("Errore interno")).log()
-                .onErrorResume(e -> Mono.just(new ErrorResponse(e.getMessage())))
+                .defaultIfEmpty(new Message("Errore interno")).log()
+                .onErrorResume(e -> Mono.just(new Message(e.getMessage())))
                 .map(GenericResponse::new)
                 .flatMap(response -> ServerResponse.ok().body(BodyInserters.fromObject(response)));
     }
@@ -44,33 +44,38 @@ public class RequestHandler extends BasicHandler {
         return ServerResponse.ok()
                 .body(Mono.just(readRequest(serverRequest))
                     .flatMapMany(req -> taskService.listTask(req))
-                    .defaultIfEmpty(new ErrorResponse("Errore interno")).log()
-                    .onErrorResume(e -> Mono.just(new ErrorResponse(e.getMessage())))
+                    .defaultIfEmpty(new Message("Errore interno")).log()
+                    .onErrorResume(e -> Mono.just(new Message(e.getMessage())))
                     .map(GenericResponse::new), GenericResponse.class);
-        /*return Mono.just(serverRequest)
-                .map(this::readRequest)
-                .flatMapMany(req -> taskService.listTask(req))
-                    .defaultIfEmpty(new ErrorResponse("Errore interno")).log()
-                .onErrorResume(e -> Mono.just(new ErrorResponse(e.getMessage())))
-                .map(GenericResponse::new)
-                //.collectList()
-                //.map( os -> new ResponseList(os.stream().map(o -> (GenericDTO)o).collect(Collectors.toList())))
-                //.map(GenericResponse::new)
-                .flatMap(response -> ServerResponse.ok().body(response, GenericResponse.class));*/
     }
 
     public Mono<ServerResponse> toggleScheduler(ServerRequest serverRequest){
         return Mono.just(serverRequest)
                 .map(req -> {
                     notificationScheduler.toggle();
-                    return ErrorResponse.builder().message("Scheduler up: " + notificationScheduler.isWorking()).build();
+                    return Message.builder().message("Scheduler up: " + notificationScheduler.isWorking()).build();
                 })
                 .flatMap(res -> ServerResponse.ok().body(BodyInserters.fromObject(res)));
     }
 
     public Mono<ServerResponse> isSchedulerWorking(ServerRequest serverRequest){
         return Mono.just(serverRequest)
-                .map(req -> ErrorResponse.builder().message("Scheduler up: " + notificationScheduler.isWorking()).build())
+                .map(req -> Message.builder().message("Scheduler up: " + notificationScheduler.isWorking()).build())
+                .flatMap(res -> ServerResponse.ok().body(BodyInserters.fromObject(res)));
+    }
+
+    public Mono<ServerResponse> forceScheduler(ServerRequest serverRequest){
+        return Mono.just(serverRequest)
+                .map(req -> {
+                    if (!notificationScheduler.isWorking()){
+                        notificationScheduler.toggle();
+                        notificationScheduler.execute();
+                        notificationScheduler.toggle();
+                    } else {
+                        notificationScheduler.execute();
+                    }
+                    return Message.builder().message("OK").build();
+                })
                 .flatMap(res -> ServerResponse.ok().body(BodyInserters.fromObject(res)));
     }
 

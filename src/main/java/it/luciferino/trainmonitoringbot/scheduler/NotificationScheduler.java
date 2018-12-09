@@ -68,13 +68,13 @@ public class NotificationScheduler {
         return enabled.get();
     }
 
-    @Scheduled(fixedRate = 150000)
-    void execute(){
-        AtomicInteger stopCounter = new AtomicInteger(0);
+    @Scheduled(fixedRate = 1000)
+    public void execute(){
         if (isWorking())
             taskRepository.findAll()
             .forEach(task -> Mono.zip(Mono.just(task), integrationService.doGet(task.getTrain()))
                     .map(tup -> {
+                        AtomicInteger stopCounter = new AtomicInteger(0);
                         Task t = tup.getT2().getFermate()
                                         .stream()
                                         //.anyMatch(fermate -> TipoFermata.A.equals(fermate.getTipoFermata()) && !StringUtils.isEmpty(fermate.getArrivoReale()))
@@ -95,20 +95,20 @@ public class NotificationScheduler {
                     task.setRitardo(t.getRitardo());
                     task.setLatestStation(new TrainResponse(t, task.getStation(), TipoNotifica.AGGIORNAMENTO).getUltimaPosizione());
                     taskRepository.save(task);
-                    notification(task, t);
+                    notification(task, t, TipoNotifica.AGGIORNAMENTO);
                 });
         return task;
     }
 
     private Task delete(Task task, TrenitaliaAndamentoResponse trenitaliaAndamentoResponse){
         taskRepository.delete(task);
-        notification(task, trenitaliaAndamentoResponse);
+        notification(task, trenitaliaAndamentoResponse, TipoNotifica.CANCELLAZIONE);
         return task;
     }
 
-    private void notification(Task task, TrenitaliaAndamentoResponse trenitaliaAndamentoResponse){
+    private void notification(Task task, TrenitaliaAndamentoResponse trenitaliaAndamentoResponse, TipoNotifica tipoNotifica){
         try {
-            String prettyResponse = gson.toJson(new TrainResponse(trenitaliaAndamentoResponse, task.getStation(), TipoNotifica.CANCELLAZIONE));
+            String prettyResponse = gson.toJson(new TrainResponse(trenitaliaAndamentoResponse, task.getStation(), tipoNotifica));
             telegramBot.sendMessage(prettyResponse, task.getChatId());
         } catch (Exception e) {
             e.printStackTrace();
@@ -116,9 +116,17 @@ public class NotificationScheduler {
     }
 
     private Boolean isArrived(Task task, Fermate fermate, Integer counter){
-            return TipoFermata.A.equals(fermate.getTipoFermata()) && !StringUtils.isEmpty(fermate.getArrivoReale())
-                    || task.getStopNumber() < counter || task.getCtime().getDayOfYear() < ZonedDateTime.now().getDayOfYear();
-
+        Boolean isArrived = false;
+        try {
+            isArrived = TipoFermata.A.equals(fermate.getTipoFermata()) && !StringUtils.isEmpty(fermate.getArrivoReale())
+                    || (task.getStopNumber() < counter && !StringUtils.isEmpty(fermate.getArrivoReale()))
+                    || task.getCtime().getDayOfYear() < ZonedDateTime.now().getDayOfYear();
+        } catch (Exception ex) {
+            isArrived = false;
+        }
+        if (isArrived)
+            return isArrived;
+        return isArrived;
     }
 
 }

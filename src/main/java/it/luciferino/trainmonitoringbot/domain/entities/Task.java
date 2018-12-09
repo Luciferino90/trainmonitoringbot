@@ -45,6 +45,6 @@ public class Task implements Serializable {
 
     private Integer ritardo;
 
-    private ZonedDateTime ctime;
+    private ZonedDateTime ctime = ZonedDateTime.now();
 
 }
